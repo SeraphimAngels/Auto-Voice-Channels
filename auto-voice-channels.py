@@ -424,7 +424,7 @@ async def on_voice_state_update(member, before, after):
             log("Creating channel for " + member.name, guild)
             s = await create_secondary(guild, after.channel)
             await member.move_to(s)
-            # await main_loop_func(guild, wait_first=False)
+            await main_loop_func(guild, wait_first=False)
 
     if before.channel:
         secondaries = get_secondaries(guild)
