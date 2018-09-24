@@ -2,6 +2,7 @@ import os
 import json
 import discord
 import asyncio
+import traceback
 from datetime import datetime
 from time import time
 
@@ -232,31 +233,35 @@ async def main_loop_func(guild, wait_first=True):
         global config
         await asyncio.sleep(config['background_interval'])
 
-    # Delete empty secondaries, in case they didn't get caught somehow (e.g. errors, downtime)
-    secondaries = get_secondaries(guild)
-    voice_channels = [x for x in guild.channels if isinstance(x, discord.VoiceChannel)]
-    for v in voice_channels:
-        if v.name != "⌛":  # Ignore secondary channels that are currently being created
-            if v.id in secondaries:
-                if not v.members:
-                    await delete_secondary(guild, v)
+    try:
+        # Delete empty secondaries, in case they didn't get caught somehow (e.g. errors, downtime)
+        secondaries = get_secondaries(guild)
+        voice_channels = [x for x in guild.channels if isinstance(x, discord.VoiceChannel)]
+        for v in voice_channels:
+            if v.name != "⌛":  # Ignore secondary channels that are currently being created
+                if v.id in secondaries:
+                    if not v.members:
+                        await delete_secondary(guild, v)
 
-    # Update secondary channel names
-    settings = get_serv_settings(guild.id)  # Need fresh in case some were deleted
-    secondaries = []
-    for p in settings['auto_channels']:
-        for sid in settings['auto_channels'][p]:
-            s = client.get_channel(sid)
-            secondaries.append(s)
-    i = 0
-    secondaries = sorted(secondaries, key=lambda x: x.position)
-    for s in secondaries:
-        i += 1
-        gname = await get_channel_game(s)
-        cname = settings['channel_name_template'].replace('##', '#'+str(i)).replace('@@game_name@@', gname)
-        if s.name != cname:
-            log("Renaming "+s.name+" to "+cname, guild)
-            await s.edit(name=cname)
+        # Update secondary channel names
+        settings = get_serv_settings(guild.id)  # Need fresh in case some were deleted
+        secondaries = []
+        for p in settings['auto_channels']:
+            for sid in settings['auto_channels'][p]:
+                s = client.get_channel(sid)
+                secondaries.append(s)
+        i = 0
+        secondaries = sorted(secondaries, key=lambda x: x.position)
+        for s in secondaries:
+            i += 1
+            gname = await get_channel_game(s)
+            cname = settings['channel_name_template'].replace('##', '#'+str(i)).replace('@@game_name@@', gname)
+            if s.name != cname:
+                log("Renaming "+s.name+" to "+cname, guild)
+                await s.edit(name=cname)
+    
+    except Exception as e:
+        traceback.print_exc()
 
     # end_time = time()
     # print(guild.name, "  tock", '{0:.3f}'.format(end_time-start_time)+'s')
